@@ -83,11 +83,12 @@
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-8">
                 <div class="glass-card p-5 md:p-8 rounded-2xl h-64 md:h-80"><canvas id="keywordChart"></canvas></div>
                 <div class="glass-card p-5 md:p-8 rounded-2xl">
-                    <h3 class="font-bold mb-3 md:mb-4">주요 기업 이슈</h3>
-                    <div id="company-issues" class="space-y-3 text-sm text-slate-600">
-                        <p>• 삼성전자: 차세대 반도체 공정 기술 이전 가속화</p>
-                        <p>• KAIST: 딥테크 기반 스핀오프 기업 투자 유치 성공</p>
-                        <p>• LG엔솔: 전고체 배터리 원천 기술 상용화 로드맵 발표</p>
+                    <h3 class="font-bold mb-3 md:mb-4">주요 기업 이슈 <span class="text-xs font-normal text-slate-400">(클릭하여 기사 보기)</span></h3>
+                    <div id="company-issues" class="space-y-1">
+                        <div class="flex items-center gap-2 text-slate-400 text-sm py-2">
+                            <div class="w-4 h-4 border-2 border-slate-300 border-t-transparent rounded-full animate-spin"></div>
+                            기업 이슈 로딩 중...
+                        </div>
                     </div>
                 </div>
             </div>
@@ -158,6 +159,18 @@
         let msitNews = [];
         let motieNews = [];
         let mssNews = [];
+        let companyIssuesLoaded = false;
+
+        const COMPANY_LIST = [
+            { name: '삼성전자',       query: '삼성전자 (기술이전 OR 기술사업화 OR 특허 상용화)' },
+            { name: 'SK하이닉스',     query: 'SK하이닉스 (기술이전 OR 반도체 기술사업화)' },
+            { name: 'LG에너지솔루션', query: 'LG에너지솔루션 (기술이전 OR 배터리 상용화)' },
+            { name: '현대자동차',     query: '현대자동차 (기술이전 OR 기술사업화)' },
+            { name: 'KAIST',          query: 'KAIST (기술사업화 OR 스핀오프 OR 기술이전)' },
+            { name: '포스코',         query: '포스코 (기술이전 OR 기술사업화)' },
+            { name: '한화',           query: '한화 (기술이전 OR 기술사업화 OR 우주 상용화)' },
+            { name: '카카오',         query: '카카오 (기술이전 OR AI 상용화 OR 기술사업화)' },
+        ];
 
         async function updateNewsData() {
             const loadingOverlay = document.getElementById('loading-overlay');
@@ -235,7 +248,22 @@
             document.getElementById('mss-news-container').innerHTML = generateHtml(mssNews);
         }
 
-        async function openKeywordModal(keyword) {
+        function renderArticleList(listEl, articles) {
+            if (articles && articles.length > 0) {
+                listEl.innerHTML = articles.map(n => `
+                    <div class="p-3 md:p-4 border border-slate-100 rounded-xl active:border-blue-300 cursor-pointer" onclick="window.open('${n.link}', '_blank')">
+                        <h4 class="text-sm font-bold text-slate-800 leading-snug">${n.title}</h4>
+                        <div class="mt-1.5 flex items-center gap-2 text-xs text-slate-500">
+                            <span class="bg-slate-100 px-2 py-0.5 rounded">${n.source}</span>
+                            <span>${n.date}</span>
+                        </div>
+                    </div>`).join('');
+            } else {
+                listEl.innerHTML = '<p class="text-center text-slate-500 py-8">관련 기사를 찾을 수 없습니다.</p>';
+            }
+        }
+
+        async function openKeywordModal(keyword, prefetchedArticles = null) {
             const modal = document.getElementById('keyword-modal');
             const contentBox = document.getElementById('keyword-modal-content-box');
             const titleEl = document.getElementById('modal-title');
@@ -248,6 +276,12 @@
             }, 10);
 
             titleEl.innerText = `'${keyword}' 관련 기사`;
+
+            if (prefetchedArticles) {
+                renderArticleList(listEl, prefetchedArticles);
+                return;
+            }
+
             listEl.innerHTML = `
                 <div class="flex flex-col items-center justify-center py-10">
                     <div class="w-9 h-9 border-4 border-blue-400 border-t-transparent rounded-full animate-spin mb-3"></div>
@@ -257,23 +291,51 @@
             try {
                 const query = `"${keyword}" (기술사업화 OR 기술이전 OR 상용화)`;
                 const res = await fetch(`/api/keyword?q=${encodeURIComponent(query)}`);
-                const newsArray = await res.json();
-
-                if (newsArray && newsArray.length > 0) {
-                    listEl.innerHTML = newsArray.map(n => `
-                        <div class="p-3 md:p-4 border border-slate-100 rounded-xl active:border-blue-300 cursor-pointer" onclick="window.open('${n.link}', '_blank')">
-                            <h4 class="text-sm md:text-md font-bold text-slate-800">${n.title}</h4>
-                            <div class="mt-1.5 flex items-center gap-2 text-xs text-slate-500">
-                                <span class="bg-slate-100 px-2 py-0.5 rounded">${n.source}</span>
-                                <span>${n.date}</span>
-                            </div>
-                        </div>`).join('');
-                } else {
-                    listEl.innerHTML = '<p class="text-center text-slate-500 py-8">관련 기사를 찾을 수 없습니다.</p>';
-                }
+                renderArticleList(listEl, await res.json());
             } catch {
                 listEl.innerHTML = '<p class="text-center text-slate-500 py-8">기사를 불러오는 중 오류가 발생했습니다.</p>';
             }
+        }
+
+        async function loadCompanyIssues() {
+            if (companyIssuesLoaded) return;
+            companyIssuesLoaded = true;
+
+            const container = document.getElementById('company-issues');
+
+            const results = await Promise.allSettled(
+                COMPANY_LIST.map(async (company) => {
+                    const res = await fetch(`/api/keyword?q=${encodeURIComponent(company.query)}`);
+                    const articles = await res.json();
+                    return { ...company, articles };
+                })
+            );
+
+            const withArticles = results
+                .filter(r => r.status === 'fulfilled' && r.value.articles?.length > 0)
+                .map(r => r.value);
+
+            if (withArticles.length === 0) {
+                container.innerHTML = '<p class="text-sm text-slate-400">현재 관련 기사가 없습니다.</p>';
+                return;
+            }
+
+            container.innerHTML = withArticles.map(c => `
+                <div class="flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-blue-50 active:bg-blue-50 cursor-pointer transition-colors group"
+                     onclick="openKeywordModal('${c.name}', companyArticleCache['${c.name}'])">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-blue-400 flex-shrink-0"></span>
+                        <span class="text-sm font-medium text-slate-700 group-hover:text-blue-600 transition-colors">${c.name}</span>
+                    </div>
+                    <span class="text-xs text-slate-400 group-hover:text-blue-500 flex items-center gap-1">
+                        기사 ${c.articles.length}건 <i class="fas fa-chevron-right text-[9px]"></i>
+                    </span>
+                </div>`).join('');
+
+            // 사전 조회 결과 캐시
+            window.companyArticleCache = Object.fromEntries(
+                withArticles.map(c => [c.name, c.articles])
+            );
         }
 
         function closeKeywordModal() {
@@ -305,7 +367,10 @@
             document.getElementById('mobile-nav-analysis').classList.toggle('mobile-nav-active', page === 'analysis');
             document.getElementById('mobile-nav-analysis').classList.toggle('text-slate-400', page !== 'analysis');
 
-            if (page === 'analysis') initChart();
+            if (page === 'analysis') {
+                initChart();
+                loadCompanyIssues();
+            }
         }
 
         function initChart() {
