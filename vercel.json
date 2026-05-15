@@ -1,0 +1,7 @@
+{
+  "rewrites": [
+    { "source": "/api/news", "destination": "/api/news" },
+    { "source": "/api/keyword", "destination": "/api/keyword" },
+    { "source": "/(.*)", "destination": "/public/index.html" }
+  ]
+}

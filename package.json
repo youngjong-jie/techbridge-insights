@@ -1,0 +1,24 @@
+{
+  "name": "techbridge-insights",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/youngjong-jie/techbridge-insights.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/youngjong-jie/techbridge-insights/issues"
+  },
+  "homepage": "https://github.com/youngjong-jie/techbridge-insights#readme",
+  "dependencies": {
+    "fast-xml-parser": "^5.8.0"
+  }
+}

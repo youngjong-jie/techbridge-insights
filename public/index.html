@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>TechBridge Insights</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Noto+Sans+KR:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', 'Noto Sans KR', sans-serif; background-color: #f8fafc; }
+        .glass-card { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); border: 1px solid rgba(226, 232, 240, 1); }
+        .nav-active { border-bottom: 2px solid #3b82f6; color: #3b82f6; }
+        .transition-all-custom { transition: all 0.3s ease; }
+        .news-card:hover { transform: translateY(-4px); box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
+    </style>
+</head>
+<body class="text-slate-800">
+
+    <nav class="sticky top-0 z-50 bg-white shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center gap-2">
+                    <div class="bg-blue-600 p-2 rounded-lg">
+                        <i class="fas fa-microchip text-white text-xl"></i>
+                    </div>
+                    <span class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">TechBridge</span>
+                </div>
+                <div class="hidden md:flex space-x-8">
+                    <button onclick="showPage('home')" id="nav-home" class="nav-active px-1 py-4 text-sm font-medium transition-all-custom">홈 동향</button>
+                    <button onclick="showPage('analysis')" id="nav-analysis" class="px-1 py-4 text-sm font-medium text-slate-500 transition-all-custom">데이터 분석</button>
+                </div>
+                <div class="flex items-center gap-4">
+                    <button onclick="updateNewsData()" id="update-btn" class="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-blue-700 shadow-md">
+                        <i class="fas fa-sync-alt" id="update-icon"></i>
+                        <span>최신 동향 업데이트</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main id="content-area" class="max-w-7xl mx-auto px-4 py-8">
+        <div id="loading-overlay" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] hidden flex flex-col items-center justify-center text-white">
+            <div class="w-16 h-16 border-4 border-blue-400 border-t-transparent rounded-full animate-spin mb-4"></div>
+            <p class="text-lg font-bold">국내외 언론 동향 스크리닝 중...</p>
+        </div>
+
+        <!-- Home Section -->
+        <div id="page-home">
+            <header class="mb-10">
+                <h1 class="text-3xl font-bold text-slate-900 mb-2">오늘의 기술사업화 브리핑</h1>
+                <p class="text-slate-500">AI가 분석한 실시간 기술 이전 및 상용화 소식입니다.</p>
+            </header>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="lg:col-span-2 space-y-4" id="korea-news-container"></div>
+                <div class="lg:col-span-1 space-y-4" id="global-news-container"></div>
+            </div>
+        </div>
+
+        <!-- Analysis Section -->
+        <div id="page-analysis" class="hidden">
+            <header class="mb-10">
+                <h1 class="text-3xl font-bold text-slate-900 mb-2">트렌드 분석 대시보드</h1>
+            </header>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div class="glass-card p-8 rounded-2xl h-80"><canvas id="keywordChart"></canvas></div>
+                <div class="glass-card p-8 rounded-2xl">
+                    <h3 class="font-bold mb-4">주요 기업 이슈</h3>
+                    <div id="company-issues" class="space-y-4 text-sm text-slate-600">
+                        <p>• 삼성전자: 차세대 반도체 공정 기술 이전 가속화</p>
+                        <p>• KAIST: 딥테크 기반 스핀오프 기업 투자 유치 성공</p>
+                        <p>• LG엔솔: 전고체 배터리 원천 기술 상용화 로드맵 발표</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-12">
+                <h3 class="text-2xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+                    <i class="fas fa-landmark text-slate-400"></i> 부처별 주요 정책 및 보도자료
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="glass-card p-6 rounded-2xl border-t-4 border-t-blue-500 shadow-sm">
+                        <h4 class="text-lg font-bold text-slate-800 mb-4">과기정통부</h4>
+                        <div id="msit-news-container" class="space-y-3">
+                            <p class="text-sm text-slate-400">우측 상단 업데이트를 진행해주세요.</p>
+                        </div>
+                    </div>
+                    <div class="glass-card p-6 rounded-2xl border-t-4 border-t-indigo-500 shadow-sm">
+                        <h4 class="text-lg font-bold text-slate-800 mb-4">산업통상자원부</h4>
+                        <div id="motie-news-container" class="space-y-3">
+                            <p class="text-sm text-slate-400">우측 상단 업데이트를 진행해주세요.</p>
+                        </div>
+                    </div>
+                    <div class="glass-card p-6 rounded-2xl border-t-4 border-t-emerald-500 shadow-sm">
+                        <h4 class="text-lg font-bold text-slate-800 mb-4">중소벤처기업부</h4>
+                        <div id="mss-news-container" class="space-y-3">
+                            <p class="text-sm text-slate-400">우측 상단 업데이트를 진행해주세요.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="keyword-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[150] hidden flex items-center justify-center opacity-0 transition-opacity duration-300">
+            <div class="bg-white p-8 rounded-3xl max-w-2xl w-full mx-4 shadow-2xl relative transform scale-95 transition-transform duration-300" id="keyword-modal-content-box">
+                <button onclick="closeKeywordModal()" class="absolute top-6 right-6 text-slate-400 hover:text-slate-700 transition-colors">
+                    <i class="fas fa-times text-2xl"></i>
+                </button>
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
+                        <i class="fas fa-search-dollar"></i>
+                    </div>
+                    <h3 id="modal-title" class="text-2xl font-bold text-slate-900">추천 기사</h3>
+                </div>
+                <div id="modal-news-list" class="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
+                    <!-- 기사 목록 로딩될 위치 -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let koreaNews = [
+            { id: 1, category: "안내", title: "우측 상단의 '최신 동향 업데이트'를 클릭하세요", summary: "구글 뉴스 스크리닝을 통해 실시간 기술사업화 동향을 불러옵니다.", source: "시스템", date: "Today", link: "#" }
+        ];
+        let globalNews = [
+            { id: 101, country: "Info", title: "Click 'Update' to fetch Google News", source: "System", date: "Today", link: "#" }
+        ];
+
+        let msitNews = [];
+        let motieNews = [];
+        let mssNews = [];
+
+        async function updateNewsData() {
+            const loadingOverlay = document.getElementById('loading-overlay');
+            const updateIcon = document.getElementById('update-icon');
+
+            loadingOverlay.classList.remove('hidden');
+            updateIcon.classList.add('animate-spin');
+
+            try {
+                const res = await fetch('/api/news');
+                if (!res.ok) throw new Error('서버 오류: ' + res.status);
+                const data = await res.json();
+
+                if (data && data.korea) {
+                    koreaNews = data.korea;
+                    globalNews = data.global;
+                    msitNews = data.msit || [];
+                    motieNews = data.motie || [];
+                    mssNews = data.mss || [];
+                    renderNews();
+                    renderMinistryNews();
+                    showToast("구글 뉴스 연동 및 번역 완료!");
+                }
+            } catch (error) {
+                showToast(error.message, "error");
+            } finally {
+                loadingOverlay.classList.add('hidden');
+                updateIcon.classList.remove('animate-spin');
+            }
+        }
+
+        function renderNews() {
+            const kContainer = document.getElementById('korea-news-container');
+            const gContainer = document.getElementById('global-news-container');
+
+            kContainer.innerHTML = `<h2 class="text-xl font-bold mb-4 flex items-center gap-2"><span class="w-1 h-6 bg-blue-600 rounded"></span>국내 동향 (Google News)</h2>` +
+                koreaNews.map(n => `
+                <div class="glass-card p-6 rounded-2xl news-card cursor-pointer" onclick="window.open('${n.link}', '_blank')">
+                    <span class="px-2 py-1 bg-blue-50 text-blue-600 text-xs font-bold rounded">${n.category}</span>
+                    <h3 class="text-lg font-bold mt-2 hover:text-blue-600 transition-colors">${n.title}</h3>
+                    <p class="text-slate-500 text-sm mt-2 line-clamp-2">${n.summary}</p>
+                    <div class="mt-4 flex justify-between text-xs text-slate-400">
+                        <span class="flex items-center gap-1"><i class="far fa-newspaper"></i> ${n.source}</span>
+                        <span>${n.date}</span>
+                    </div>
+                </div>`).join('');
+
+            gContainer.innerHTML = `<h2 class="text-xl font-bold mb-4 flex items-center gap-2"><span class="w-1 h-6 bg-indigo-600 rounded"></span>글로벌 동향 (Google News)</h2>` +
+                globalNews.map(n => `
+                <div class="p-4 border-b hover:bg-slate-50 cursor-pointer" onclick="window.open('${n.link}', '_blank')">
+                    <span class="text-[10px] font-bold text-indigo-500 uppercase">${n.country}</span>
+                    <h4 class="text-sm font-bold mt-1 hover:text-indigo-600 transition-colors">${n.title}</h4>
+                    <p class="text-[10px] text-slate-400 mt-1">${n.source} | ${n.date}</p>
+                </div>`).join('');
+        }
+
+        function renderMinistryNews() {
+            const generateHtml = (newsArray) => {
+                if (!newsArray || newsArray.length === 0) return '<p class="text-sm text-slate-400">데이터가 없습니다.</p>';
+                return newsArray.map(n => `
+                    <div class="p-3 bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer" onclick="window.open('${n.link}', '_blank')">
+                        <h5 class="text-sm font-bold text-slate-800 line-clamp-2">${n.title}</h5>
+                        <div class="mt-2 text-[10px] text-slate-500 flex justify-between">
+                            <span>${n.source}</span><span>${n.date}</span>
+                        </div>
+                    </div>
+                `).join('');
+            };
+
+            document.getElementById('msit-news-container').innerHTML = generateHtml(msitNews);
+            document.getElementById('motie-news-container').innerHTML = generateHtml(motieNews);
+            document.getElementById('mss-news-container').innerHTML = generateHtml(mssNews);
+        }
+
+        async function openKeywordModal(keyword) {
+            const modal = document.getElementById('keyword-modal');
+            const contentBox = document.getElementById('keyword-modal-content-box');
+            const titleEl = document.getElementById('modal-title');
+            const listEl = document.getElementById('modal-news-list');
+
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                contentBox.classList.remove('scale-95');
+            }, 10);
+
+            titleEl.innerText = `'${keyword}' 주요 기술사업화 기사`;
+            listEl.innerHTML = `
+                <div class="flex flex-col items-center justify-center py-12">
+                    <div class="w-10 h-10 border-4 border-blue-400 border-t-transparent rounded-full animate-spin mb-4"></div>
+                    <p class="text-slate-500 text-sm">실시간으로 추천 기사를 가져오는 중입니다...</p>
+                </div>
+            `;
+
+            try {
+                const query = `"${keyword}" (기술사업화 OR 기술이전 OR 상용화)`;
+                const res = await fetch(`/api/keyword?q=${encodeURIComponent(query)}`);
+                const newsArray = await res.json();
+
+                if (newsArray && newsArray.length > 0) {
+                    listEl.innerHTML = newsArray.map(n => `
+                        <div class="p-4 border border-slate-100 rounded-xl hover:border-blue-300 hover:shadow-md transition-all cursor-pointer" onclick="window.open('${n.link}', '_blank')">
+                            <h4 class="text-md font-bold text-slate-800 hover:text-blue-600 transition-colors">${n.title}</h4>
+                            <div class="mt-2 flex items-center gap-2 text-xs text-slate-500">
+                                <span class="bg-slate-100 px-2 py-1 rounded text-slate-600">${n.source}</span>
+                                <span>${n.date}</span>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    listEl.innerHTML = '<p class="text-center text-slate-500 py-8">관련 기사를 찾을 수 없습니다.</p>';
+                }
+            } catch {
+                listEl.innerHTML = '<p class="text-center text-slate-500 py-8">기사를 불러오는 중 오류가 발생했습니다.</p>';
+            }
+        }
+
+        function closeKeywordModal() {
+            const modal = document.getElementById('keyword-modal');
+            const contentBox = document.getElementById('keyword-modal-content-box');
+
+            modal.classList.add('opacity-0');
+            contentBox.classList.add('scale-95');
+
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+
+        function showPage(page) {
+            document.getElementById('page-home').classList.toggle('hidden', page !== 'home');
+            document.getElementById('page-analysis').classList.toggle('hidden', page !== 'analysis');
+            document.getElementById('nav-home').classList.toggle('nav-active', page === 'home');
+            document.getElementById('nav-analysis').classList.toggle('nav-active', page === 'analysis');
+            if (page === 'analysis') initChart();
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('keywordChart').getContext('2d');
+            if (window.myChart) window.myChart.destroy();
+            window.myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['인공지능', '반도체', '이차전지', '양자', '수소'],
+                    datasets: [{
+                        label: '언급빈도',
+                        data: [95, 82, 70, 40, 30],
+                        backgroundColor: '#3b82f6',
+                        borderRadius: 5,
+                        hoverBackgroundColor: '#2563eb'
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    onHover: (event, chartElement) => {
+                        event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default';
+                    },
+                    onClick: (event, elements) => {
+                        if (elements.length > 0) {
+                            const index = elements[0].index;
+                            const keyword = window.myChart.data.labels[index];
+                            openKeywordModal(keyword);
+                        }
+                    }
+                }
+            });
+        }
+
+        function showToast(msg, type = "success") {
+            const t = document.createElement('div');
+            t.className = `fixed bottom-8 right-8 px-6 py-3 rounded-xl text-white z-[200] transition-all transform ${type === 'success' ? 'bg-emerald-500' : 'bg-red-500'}`;
+            t.innerText = msg;
+            document.body.appendChild(t);
+            setTimeout(() => t.remove(), 3000);
+        }
+
+        window.onload = renderNews;
+    </script>
+</body>
+</html>
