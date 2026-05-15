@@ -12,6 +12,8 @@
         .glass-card { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); border: 1px solid rgba(226, 232, 240, 1); }
         .nav-active { border-bottom: 2px solid #3b82f6; color: #3b82f6; }
         .mobile-nav-active { color: #3b82f6 !important; }
+        .inst-tab-active { background-color: #3b82f6; color: #fff; }
+        .inst-tab { background-color: #f1f5f9; color: #64748b; }
         .transition-all-custom { transition: all 0.3s ease; }
         @media (hover: hover) {
             .news-card:hover { transform: translateY(-4px); box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
@@ -82,12 +84,18 @@
             </header>
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-8">
                 <div class="glass-card p-5 md:p-8 rounded-2xl h-64 md:h-80"><canvas id="keywordChart"></canvas></div>
-                <div class="glass-card p-5 md:p-8 rounded-2xl">
-                    <h3 class="font-bold mb-3 md:mb-4">주요 기업 이슈 <span class="text-xs font-normal text-slate-400">(클릭하여 기사 보기)</span></h3>
-                    <div id="company-issues" class="space-y-1">
+                <div class="glass-card p-5 md:p-8 rounded-2xl flex flex-col">
+                    <h3 class="font-bold mb-3">기관별 창업·기술이전 사례 <span class="text-xs font-normal text-slate-400">(클릭하여 기사 보기)</span></h3>
+                    <!-- 카테고리 탭 -->
+                    <div class="flex gap-2 mb-3">
+                        <button onclick="switchInstitutionTab('출연연')" id="tab-출연연" class="inst-tab-active inst-tab px-3 py-1 rounded-full text-xs font-bold transition-colors">출연연</button>
+                        <button onclick="switchInstitutionTab('과기원')" id="tab-과기원" class="inst-tab px-3 py-1 rounded-full text-xs font-bold transition-colors">과기원</button>
+                        <button onclick="switchInstitutionTab('대학')"   id="tab-대학"   class="inst-tab px-3 py-1 rounded-full text-xs font-bold transition-colors">대학</button>
+                    </div>
+                    <div id="institution-issues" class="space-y-1 overflow-y-auto flex-1 max-h-44 md:max-h-52">
                         <div class="flex items-center gap-2 text-slate-400 text-sm py-2">
                             <div class="w-4 h-4 border-2 border-slate-300 border-t-transparent rounded-full animate-spin"></div>
-                            기업 이슈 로딩 중...
+                            로딩 중...
                         </div>
                     </div>
                 </div>
@@ -159,18 +167,37 @@
         let msitNews = [];
         let motieNews = [];
         let mssNews = [];
-        let companyIssuesLoaded = false;
+        const INSTITUTION_LIST = {
+            '출연연': [
+                { name: 'ETRI',   label: '한국전자통신연구원', query: 'ETRI OR 한국전자통신연구원 (창업 OR 기술이전 OR 기술사업화)' },
+                { name: 'KIST',   label: '한국과학기술연구원', query: 'KIST OR 한국과학기술연구원 (창업 OR 기술이전 OR 기술사업화)' },
+                { name: 'KITECH', label: '한국생산기술연구원', query: 'KITECH OR 한국생산기술연구원 (창업 OR 기술이전)' },
+                { name: 'KIMM',   label: '한국기계연구원',     query: 'KIMM OR 한국기계연구원 (창업 OR 기술이전)' },
+                { name: 'KIER',   label: '한국에너지기술연구원', query: 'KIER OR 한국에너지기술연구원 (창업 OR 기술이전)' },
+                { name: 'KRICT',  label: '한국화학연구원',     query: 'KRICT OR 한국화학연구원 (창업 OR 기술이전)' },
+                { name: 'KERI',   label: '한국전기연구원',     query: 'KERI OR 한국전기연구원 (창업 OR 기술이전)' },
+                { name: 'KRISS',  label: '한국표준과학연구원', query: 'KRISS OR 한국표준과학연구원 (창업 OR 기술이전)' },
+            ],
+            '과기원': [
+                { name: 'KAIST',  label: '한국과학기술원',   query: 'KAIST (창업 OR 기술이전 OR 스핀오프 OR 기술사업화)' },
+                { name: 'POSTECH',label: '포항공과대학교',   query: 'POSTECH OR 포항공대 (창업 OR 기술이전 OR 기술사업화)' },
+                { name: 'GIST',   label: '광주과학기술원',   query: 'GIST OR 광주과학기술원 (창업 OR 기술이전)' },
+                { name: 'UNIST',  label: '울산과학기술원',   query: 'UNIST OR 울산과학기술원 (창업 OR 기술이전 OR 기술사업화)' },
+                { name: 'DGIST',  label: '대구경북과학기술원', query: 'DGIST OR 대구경북과학기술원 (창업 OR 기술이전)' },
+            ],
+            '대학': [
+                { name: '서울대',   label: '서울대학교',   query: '서울대 (창업 OR 기술이전 OR 기술사업화 OR 스핀오프)' },
+                { name: '연세대',   label: '연세대학교',   query: '연세대 (창업 OR 기술이전 OR 기술사업화)' },
+                { name: '고려대',   label: '고려대학교',   query: '고려대 (창업 OR 기술이전 OR 기술사업화)' },
+                { name: '한양대',   label: '한양대학교',   query: '한양대 (창업 OR 기술이전 OR 기술사업화)' },
+                { name: '성균관대', label: '성균관대학교', query: '성균관대 (창업 OR 기술이전 OR 기술사업화)' },
+                { name: '이화여대', label: '이화여자대학교', query: '이화여대 (창업 OR 기술이전 OR 기술사업화)' },
+            ],
+        };
 
-        const COMPANY_LIST = [
-            { name: '삼성전자',       query: '삼성전자 (기술이전 OR 기술사업화 OR 특허 상용화)' },
-            { name: 'SK하이닉스',     query: 'SK하이닉스 (기술이전 OR 반도체 기술사업화)' },
-            { name: 'LG에너지솔루션', query: 'LG에너지솔루션 (기술이전 OR 배터리 상용화)' },
-            { name: '현대자동차',     query: '현대자동차 (기술이전 OR 기술사업화)' },
-            { name: 'KAIST',          query: 'KAIST (기술사업화 OR 스핀오프 OR 기술이전)' },
-            { name: '포스코',         query: '포스코 (기술이전 OR 기술사업화)' },
-            { name: '한화',           query: '한화 (기술이전 OR 기술사업화 OR 우주 상용화)' },
-            { name: '카카오',         query: '카카오 (기술이전 OR AI 상용화 OR 기술사업화)' },
-        ];
+        const institutionCache = {};   // { '출연연': [...], '과기원': [...] }
+        const institutionLoading = {}; // 탭별 로딩 중 여부
+        let currentInstitutionTab = '출연연';
 
         async function updateNewsData() {
             const loadingOverlay = document.getElementById('loading-overlay');
@@ -297,45 +324,75 @@
             }
         }
 
-        async function loadCompanyIssues() {
-            if (companyIssuesLoaded) return;
-            companyIssuesLoaded = true;
+        async function loadInstitutionIssues(category) {
+            if (institutionCache[category]) {
+                renderInstitutionList(category);
+                return;
+            }
+            if (institutionLoading[category]) return;
+            institutionLoading[category] = true;
 
-            const container = document.getElementById('company-issues');
+            const container = document.getElementById('institution-issues');
+            container.innerHTML = `
+                <div class="flex items-center gap-2 text-slate-400 text-sm py-2">
+                    <div class="w-4 h-4 border-2 border-slate-300 border-t-transparent rounded-full animate-spin"></div>
+                    로딩 중...
+                </div>`;
 
             const results = await Promise.allSettled(
-                COMPANY_LIST.map(async (company) => {
-                    const res = await fetch(`/api/keyword?q=${encodeURIComponent(company.query)}`);
+                INSTITUTION_LIST[category].map(async (inst) => {
+                    const res = await fetch(`/api/keyword?q=${encodeURIComponent(inst.query)}`);
                     const articles = await res.json();
-                    return { ...company, articles };
+                    return { ...inst, articles };
                 })
             );
 
-            const withArticles = results
+            institutionCache[category] = results
                 .filter(r => r.status === 'fulfilled' && r.value.articles?.length > 0)
                 .map(r => r.value);
 
-            if (withArticles.length === 0) {
-                container.innerHTML = '<p class="text-sm text-slate-400">현재 관련 기사가 없습니다.</p>';
+            renderInstitutionList(category);
+        }
+
+        function renderInstitutionList(category) {
+            const container = document.getElementById('institution-issues');
+            const list = institutionCache[category] || [];
+
+            if (list.length === 0) {
+                container.innerHTML = '<p class="text-sm text-slate-400 py-2">현재 관련 기사가 없습니다.</p>';
                 return;
             }
 
-            container.innerHTML = withArticles.map(c => `
+            container.innerHTML = list.map((inst, idx) => `
                 <div class="flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-blue-50 active:bg-blue-50 cursor-pointer transition-colors group"
-                     onclick="openKeywordModal('${c.name}', companyArticleCache['${c.name}'])">
-                    <div class="flex items-center gap-2">
+                     onclick="openInstitutionModal('${currentInstitutionTab}', ${idx})">
+                    <div class="flex items-center gap-2 min-w-0">
                         <span class="w-2 h-2 rounded-full bg-blue-400 flex-shrink-0"></span>
-                        <span class="text-sm font-medium text-slate-700 group-hover:text-blue-600 transition-colors">${c.name}</span>
+                        <div class="min-w-0">
+                            <span class="text-sm font-bold text-slate-700 group-hover:text-blue-600 transition-colors">${inst.name}</span>
+                            <span class="text-xs text-slate-400 ml-1.5">${inst.label}</span>
+                        </div>
                     </div>
-                    <span class="text-xs text-slate-400 group-hover:text-blue-500 flex items-center gap-1">
-                        기사 ${c.articles.length}건 <i class="fas fa-chevron-right text-[9px]"></i>
+                    <span class="text-xs text-slate-400 group-hover:text-blue-500 flex items-center gap-1 flex-shrink-0 ml-2">
+                        ${inst.articles.length}건 <i class="fas fa-chevron-right text-[9px]"></i>
                     </span>
                 </div>`).join('');
+        }
 
-            // 사전 조회 결과 캐시
-            window.companyArticleCache = Object.fromEntries(
-                withArticles.map(c => [c.name, c.articles])
-            );
+        function switchInstitutionTab(category) {
+            currentInstitutionTab = category;
+            ['출연연', '과기원', '대학'].forEach(tab => {
+                const btn = document.getElementById(`tab-${tab}`);
+                btn.classList.toggle('inst-tab-active', tab === category);
+                btn.classList.toggle('inst-tab', true);
+            });
+            loadInstitutionIssues(category);
+        }
+
+        function openInstitutionModal(category, idx) {
+            const inst = (institutionCache[category] || [])[idx];
+            if (!inst) return;
+            openKeywordModal(`${inst.name} 창업·기술이전`, inst.articles);
         }
 
         function closeKeywordModal() {
@@ -369,7 +426,7 @@
 
             if (page === 'analysis') {
                 initChart();
-                loadCompanyIssues();
+                loadInstitutionIssues(currentInstitutionTab);
             }
         }
 
